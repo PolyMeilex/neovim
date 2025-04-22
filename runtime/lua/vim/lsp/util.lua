@@ -1920,6 +1920,8 @@ end
 function M.make_position_params(window, position_encoding)
   window = window or 0
   local buf = api.nvim_win_get_buf(window)
+  local mode = api.nvim_get_mode().mode
+
   if position_encoding == nil then
     vim.notify_once(
       'position_encoding param is required in vim.lsp.util.make_position_params. Defaulting to position encoding of the first client.',
@@ -1928,10 +1930,21 @@ function M.make_position_params(window, position_encoding)
     --- @diagnostic disable-next-line: deprecated
     position_encoding = M._get_offset_encoding(buf)
   end
-  return {
+
+  ---@type lsp.TextDocumentPositionParams
+  local out = {
     textDocument = M.make_text_document_params(buf),
     position = make_position_param(window, position_encoding),
   }
+
+  -- Supply range if we have a visual selection
+  if mode == 'v' or mode == 'V' then
+    -- TODO: Remove once LSP spec is updated to include range
+    --- @diagnostic disable-next-line:inject-field
+    out.range = M.make_given_range_params(nil, nil, nil, position_encoding).range
+  end
+
+  return out
 end
 
 --- Utility function for getting the encoding of the first LSP client on the given buffer.
